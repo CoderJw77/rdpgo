@@ -1,8 +1,0 @@
-.idea
-.run
-*.md
-*.toml
-*.yam
-
-frontend
-!frontend/dist

@@ -4,12 +4,13 @@ import (
 	"bytes"
 	"context"
 	"fmt"
+	"net/http"
+
+	"github.com/coderjw77/rdpgo/guac"
 	"github.com/gin-gonic/gin"
 	"github.com/gorilla/websocket"
 	"github.com/sirupsen/logrus"
 	"golang.org/x/sync/errgroup"
-	"net/http"
-	"rdpgo/guac"
 )
 
 type ReqArg struct {
@@ -38,19 +39,12 @@ func ApiWsGuacamole() gin.HandlerFunc {
 		},
 	}
 	return func(c *gin.Context) {
-		//1. 解析参数, 因为 websocket 只能个通过浏览器url,request-header,cookie 传参数, 这里之接收 url-query 参数.
-		logrus.Println("1. 解析参数, 因为 websocket 只能个通过浏览器url,request-header,cookie 传参数, 这里之接收 url-query 参数.")
-
 		arg := new(ReqArg)
 		err := c.BindQuery(arg)
 		if err != nil {
 			c.JSON(202, err.Error())
 			return
 		}
-
-		//2. 设置为http-get websocket 升级
-		logrus.Println("2. 设置为http-get websocket 升级")
-
 		protocol := c.Request.Header.Get("Sec-Websocket-Protocol")
 		ws, err := upgrade.Upgrade(c.Writer, c.Request, http.Header{
 			"Sec-Websocket-Protocol": {protocol},
@@ -65,10 +59,7 @@ func ApiWsGuacamole() gin.HandlerFunc {
 			}
 		}()
 
-		//3. 开始使用参数连接RDP远程桌面资产
-		logrus.Println("3. 开始使用参数连接RDP远程桌面资产, 对应guacamole protocol 文档的handshake章节")
 		uid := ""
-
 		pipeTunnel, err := guac.NewGuacamoleTunnel(arg.GuacadAddr, arg.AssetProtocol, arg.AssetHost, arg.AssetPort, arg.AssetUser, arg.AssetPassword, uid, arg.ScreenWidth, arg.ScreenHeight, arg.ScreenDpi)
 		if err != nil {
 			logrus.Error("Failed to upgrade websocket", err)
@@ -79,9 +70,6 @@ func ApiWsGuacamole() gin.HandlerFunc {
 				logrus.Traceln("Error closing pipeTunnel", err)
 			}
 		}()
-		//4. 开始处理 guacad-tunnel的io(reader,writer)
-		logrus.Println("4. 开始处理 guacad-tunnel的io(reader,writer)")
-		//id := pipeTunnel.ConnectionID()
 
 		ioCopy(ws, pipeTunnel)
 		logrus.Info("websocket session end")
@@ -89,7 +77,6 @@ func ApiWsGuacamole() gin.HandlerFunc {
 }
 
 func ioCopy(ws *websocket.Conn, tunnl *guac.SimpleTunnel) {
-
 	writer := tunnl.AcquireWriter()
 	reader := tunnl.AcquireReader()
 	//if pipeTunnel.OnDisconnectWs != nil {
@@ -154,5 +141,4 @@ func ioCopy(ws *websocket.Conn, tunnl *guac.SimpleTunnel) {
 	if err := eg.Wait(); err != nil {
 		logrus.WithError(err).Error("session-err")
 	}
-
 }
