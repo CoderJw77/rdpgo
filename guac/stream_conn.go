@@ -68,60 +68,66 @@ func (s *Stream) ReadSome() (instruction []byte, err error) {
 	// While we're blocking, or input is available
 	for {
 		// Length of element
-		var elementLength int
+		//var elementLength int
 
 		// Resume where we left off
 		i := s.parseStart
 
-	parseLoop:
-		// Parse instruction in buffer
+		//parseLoop:
+		//Parse instruction in buffer
 		for i < len(s.buffer) {
 			// ReadSome character
 			readChar := s.buffer[i]
 			i++
-
-			switch readChar {
-			// If digit, update length
-			case '0', '1', '2', '3', '4', '5', '6', '7', '8', '9':
-				elementLength = elementLength*10 + int(readChar-'0')
-
-			// If not digit, check for end-of-length character
-			case '.':
-				if i+elementLength >= len(s.buffer) {
-					// break for i < s.usedLength { ... }
-					// Otherwise, read more data
-					break parseLoop
-				}
-				// Check if element present in buffer
-				terminator := s.buffer[i+elementLength]
-				// Move to character after terminator
-				i += elementLength + 1
-
-				// Reset length
-				elementLength = 0
-
-				// Continue here if necessary
-				s.parseStart = i
-
-				// If terminator is semicolon, we have a full
-				// instruction.
-				switch terminator {
-				case ';':
-					instruction = s.buffer[0:i]
-					s.parseStart = 0
-					s.buffer = s.buffer[i:]
-					return
-				case ',':
-					// keep going
-				default:
-					err = ErrServer.NewError("Element terminator of instruction was not ';' nor ','")
-					return
-				}
-			default:
-				// Otherwise, parse error
-				err = ErrServer.NewError("Non-numeric character in element length:", string(readChar))
+			if readChar == ';' {
+				instruction = s.buffer[0:i]
+				s.parseStart = 0
+				s.buffer = s.buffer[i:]
 				return
 			}
+			//
+			//switch readChar {
+			//// If digit, update length
+			//case '0', '1', '2', '3', '4', '5', '6', '7', '8', '9':
+			//	elementLength = elementLength*10 + int(readChar-'0')
+			//
+			//// If not digit, check for end-of-length character
+			//case '.':
+			//	if i+elementLength >= len(s.buffer) {
+			//		// break for i < s.usedLength { ... }
+			//		// Otherwise, read more data
+			//		break parseLoop
+			//	}
+			//	// Check if element present in buffer
+			//	terminator := s.buffer[i+elementLength]
+			//	// Move to character after terminator
+			//	i += elementLength + 1
+			//
+			//	// Reset length
+			//	elementLength = 0
+			//
+			//	// Continue here if necessary
+			//	s.parseStart = i
+			//
+			//	// If terminator is semicolon, we have a full
+			//	// instruction.
+			//	switch terminator {
+			//	case ';':
+			//		//instruction = s.buffer[0:i]
+			//		//s.parseStart = 0
+			//		//s.buffer = s.buffer[i:]
+			//		return
+			//	case ',':
+			//		// keep going
+			//	default:
+			//		err = ErrServer.NewError("Element terminator of instruction was not ';' nor ','")
+			//		return
+			//	}
+			//default:
+			//	// Otherwise, parse error
+			//	err = ErrServer.NewError("Non-numeric character in element length:", string(readChar))
+			//	return
+			//}
 		}
 
 		if cap(s.buffer) < MaxGuacMessage {
@@ -150,6 +156,7 @@ func (s *Stream) ReadSome() (instruction []byte, err error) {
 		s.buffer = s.buffer[:len(s.buffer)+n]
 	}
 }
+
 
 // Close closes the underlying network connection
 func (s *Stream) Close() error {
